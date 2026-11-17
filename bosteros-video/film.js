@@ -24,8 +24,10 @@
   }
   // caption card: cream card with blue text, pops in, slides out
   function captionCard(ctx, c, t, y) {
-    if (t < c.t || t > c.end + 0.2) return;
-    const u = clamp((t - c.t) / 0.3), out = clamp((t - c.end) / 0.2);
+    const handoff = S.captions.some((o) => o !== c && Math.abs(o.t - c.end) < 0.05); // the next card replaces this one
+    if (t < c.t || t > c.end + (handoff ? 0 : 0.2)) return;
+    if (handoff && t >= c.end) return;
+    const u = clamp((t - c.t) / 0.3), out = handoff ? 0 : clamp((t - c.end) / 0.2);
     const size = 54, maxW = SAFE.w - 150;
     const lines = wrap(ctx, c.text, maxW, size, 'Inter', 800);
     const h = lines.length * size * 1.22 + 56;
@@ -129,7 +131,7 @@
       ctx.fillStyle = `rgba(110,80,60,${0.55 * (1 - u)})`; ctx.beginPath(); ctx.arc(sx, sy, 40 + a * 22, 0, Math.PI * 2); ctx.fill();
     }
     // stink lines after "bosta" caption
-    if (t > T(5)) stinkLines(ctx, t, CX + 60, GROUND - 40, T(5), '#4F7A1F');
+    if (t > 11.7) stinkLines(ctx, t, CX + 60, GROUND - 40, 11.7, '#4F7A1F');
     // bricks: each lands on its note
     for (const b of S.bricks) {
       const [x, y] = brickPos(b.i);
@@ -138,7 +140,7 @@
       brick(ctx, x, yy);
     }
     // horse-dung pile on a wheelbarrow-free sign
-    if (t > T(5)) bosta(ctx, CX + 60, GROUND + 90, 1.1, bounce(t, T(5), 0.35));
+    if (t > 11.7) bosta(ctx, CX + 60, GROUND + 90, 1.1, bounce(t, 11.7, 0.35));
   }
 
   // a pile of bosta (brown cartoon pile)
@@ -276,10 +278,10 @@
       }
       x += widths[i];
     });
-    const a = clamp((t - T(17)) / 0.35);
+    const a = clamp((t - ev.adopto) / 0.35);
     if (a > 0) {
       textBlock(ctx, 'y la hinchada lo adoptó', CX, y + 170, { size: 64, color: CREAM, alpha: a, stroke: INK, strokeW: 10 });
-      const p = bounce(t, T(17, 2), 0.3);
+      const p = bounce(t, ev.orgullo, 0.3);
       if (p > 0) { ctx.save(); ctx.translate(CX, y + 300); ctx.scale(p, p); ctx.rotate(-0.04); G.text(ctx, 'CON ORGULLO', 0, 0, { size: 104, fam: 'Bungee', weight: 400, color: CREAM, align: 'center', stroke: INK, strokeW: 16, boil: 0 }); ctx.restore(); }
     }
     G.confetti(ctx, t, ev.drop, { n: 140, seed: 7, spawn: 2.5 });
@@ -304,7 +306,7 @@
       G.text(ctx, s, -240, 22, { size: 60, fam: 'Inter', weight: 800, color: INK, align: 'left', boil: 0 });
       ctx.restore();
     });
-    const c = clamp((t - T(20)) / 0.4);
+    const c = clamp((t - ev.comment) / 0.4);
     if (c > 0) {
       G.text(ctx, 'Comentá 1, 2 o 3', CX, y + 860, { size: 64, fam: 'Bungee', weight: 400, color: GOLD, align: 'center', alpha: c, stroke: INK, strokeW: 10, boil: 0 });
       G.text(ctx, 'Teorías populares: ninguna está 100% confirmada.', CX, y + 940, { size: 36, fam: 'Inter', weight: 700, color: CREAM, align: 'center', alpha: c, boil: 0 });

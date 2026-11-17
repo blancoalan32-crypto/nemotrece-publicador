@@ -17,7 +17,7 @@ const K = I.kick(), SN = I.snare(), CL = I.clap(), HC = [I.hat(false, 11), I.hat
 const CR = (s) => I.crash(s);
 const kicks = [];
 const quiet = (t) => t >= ev.breath && t < ev.drop;
-clock.eachStep(0, 21, 16, (t, b, s) => {
+clock.eachStep(0, 26, 16, (t, b, s) => {
   if (quiet(t) || t >= ev.end) return;
   const drop = t >= ev.drop && t < ev.cta;
   const intro = b < 3;
@@ -34,10 +34,10 @@ for (const [t, g, seed] of [[T(1, 2), 0.35, 18], [ev.t1, 0.35, 19], [ev.t2, 0.35
   fx.addMono(I.thud(70, 0.1), t, 0.6);
 }
 // snare roll that stops a beat before the held breath
-for (let i = 0; i < 8; i++) drums.addMono(SN, T(15, 0) + i * BEAT / 4, 0.18 + i * 0.03, 0.05);
+for (let i = 0; i < 8; i++) drums.addMono(SN, T(20, 0) + i * BEAT / 4, 0.18 + i * 0.03, 0.05);
 
 // ---------- bass ----------
-clock.eachStep(0, 21, 8, (t, b, s) => {
+clock.eachStep(0, 26, 8, (t, b, s) => {
   if (quiet(t) || t >= ev.end) return;
   const c = sc.chordAt(t); if (!c) return;
   const R = c.bass + 12;
@@ -69,7 +69,8 @@ for (const b of sc.bricks) {
 
 // ---------- teoría 2: hooves on 8ths, a guitar arpeggio, a plop of bosta on beat 4 ----------
 sc.hooves.forEach((t, i) => fx.addMono(I.woodTick(i % 2 ? 1.25 : 0.95), t, i % 2 ? 0.22 : 0.32, i % 2 ? 0.2 : -0.2));
-clock.eachStep(7, 11, 8, (t, b, s) => {
+clock.eachStep(8, 14, 8, (t, b, s) => {
+  if (t >= ev.t3) return;
   const c = sc.chordAt(t); if (!c) return;
   const tones = [c.notes[0], c.notes[1], c.notes[2], c.notes[1] + 12];
   const g = I.guitar(tones[s % 4] + (s >= 4 ? 12 : 0), BEAT, { bright: 0.6, seed: s + b * 8 });
@@ -95,6 +96,10 @@ for (const n of sc.brass) {
 // caption swooshes
 for (const c of sc.captions) fx.addMono(I.paperFwip(1.0, Math.round(c.t * 10)), c.t - 0.03, 0.18);
 
+// ---------- the voiceover (the user's recording); the music ducks under it ----------
+const vo = MIX.loadAudio(path.join(__dirname, sc.VO.file), { at: sc.VO.at, gain: 1, length: DURATION });
+vo.n = N; // same length as the music buses
+
 // ---------- mix ----------
 MIX.sidechain([pad, bass], kicks.filter((t) => t >= ev.drop && t < ev.cta));
 const stems = {
@@ -102,11 +107,13 @@ const stems = {
   verb: reverb(verb, { room: 0.8, damp: 0.3 }),
   dly: pingpong(dly, BEAT * 0.75, 0.35, 3500),
 };
-const GAIN = { drums: 0.4, bass: 0.7, pad: 2.4, keys: 0.9, gtr: 2.2, brass: 2.0, fx: 0.8, verb: 1, dly: 1 };
+const GAIN = { vo: 1.6, drums: 0.4, bass: 0.7, pad: 2.4, keys: 0.9, gtr: 2.2, brass: 2.0, fx: 0.8, verb: 1, dly: 1 };
 const out = path.join(__dirname, 'out');
+MIX.duck([drums, bass, pad, keys, gtr, brass, stems.verb, stems.dly], vo, { depth: 0.55, release: 0.35, threshold: 0.03 });
+stems.vo = vo;
 const mix = MIX.mixdown(stems, GAIN, { stemDir: process.env.STEMS ? out : null });
 MIX.highpass(mix, 22);
-MIX.gate(mix, ev.breath, ev.drop);
+MIX.gate(mix, ev.breath, ev.drop - 0.2); // the voice's "y la..." leads into the drop
 MIX.fadeOut(mix, DURATION - 1.8, DURATION);
 const M = MIX.master(mix, parseFloat(process.env.DRIVE || '0.8'), undefined, { lufs: process.env.LUFS ? parseFloat(process.env.LUFS) : -14 });
 MIX.writeWav(path.join(out, 'music.wav'), mix);
